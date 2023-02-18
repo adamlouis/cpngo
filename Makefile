@@ -10,7 +10,8 @@ test: FORCE
 build: FORCE
 	go build -o build/cpngo cmd/main.go
 
-run: FORCE
-	go run .
+
+serve: FORCE
+	go run cmd/main.go serve
 
 .PHONY: FORCE

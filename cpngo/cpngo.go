@@ -115,6 +115,7 @@ func (n *Net) Places() []Place {
 	for _, p := range n.placesByID {
 		ret = append(ret, p.Place)
 	}
+	sort.Slice(ret, func(i, j int) bool { return ret[i].ID < ret[j].ID })
 	return ret
 }
 func (n *Net) Transitions() []Transition {
@@ -122,6 +123,7 @@ func (n *Net) Transitions() []Transition {
 	for _, t := range n.transitionsByID {
 		ret = append(ret, t.Transition)
 	}
+	sort.Slice(ret, func(i, j int) bool { return ret[i].ID < ret[j].ID })
 	return ret
 }
 func (n *Net) InputArcs() []InputArc {
@@ -129,6 +131,7 @@ func (n *Net) InputArcs() []InputArc {
 	for _, a := range n.inputArcsByID {
 		ret = append(ret, a.InputArc)
 	}
+	sort.Slice(ret, func(i, j int) bool { return ret[i].ID < ret[j].ID })
 	return ret
 }
 func (n *Net) OutputArcs() []OutputArc {
@@ -136,6 +139,7 @@ func (n *Net) OutputArcs() []OutputArc {
 	for _, a := range n.outputArcsByID {
 		ret = append(ret, a.OutputArc)
 	}
+	sort.Slice(ret, func(i, j int) bool { return ret[i].ID < ret[j].ID })
 	return ret
 }
 func (n *Net) Tokens() []Token {
@@ -143,6 +147,7 @@ func (n *Net) Tokens() []Token {
 	for _, t := range n.tokensByID {
 		ret = append(ret, t.Token)
 	}
+	sort.Slice(ret, func(i, j int) bool { return ret[i].ID < ret[j].ID })
 	return ret
 }
 func (n *Net) Summary() Summary {
@@ -192,7 +197,6 @@ func (n *Net) FireAny() error {
 	if len(ts) < 1 {
 		return fmt.Errorf("no transitions are enabled")
 	}
-
 	sort.Slice(ts, func(i, j int) bool {
 		return ts[i].ID < ts[j].ID
 	})
