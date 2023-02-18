@@ -16,25 +16,25 @@ type Net struct {
 }
 
 type Place struct {
-	ID string
+	ID string `json:"id"`
 }
 type Transition struct {
-	ID string
+	ID string `json:"id"`
 }
 type InputArc struct {
-	ID     string
-	FromID string
-	ToID   string
+	ID     string `json:"id"`
+	FromID string `json:"from_id"`
+	ToID   string `json:"to_id"`
 }
 type OutputArc struct {
-	ID     string
-	FromID string
-	ToID   string
+	ID     string `json:"id"`
+	FromID string `json:"from_id"`
+	ToID   string `json:"to_id"`
 }
 type Token struct {
-	ID      string
-	PlaceID string
-	Color   any
+	ID      string `json:"id"`
+	PlaceID string `json:"place_id"`
+	Color   any    `json:"color"`
 }
 
 type place struct {
@@ -82,29 +82,17 @@ func NewNet(
 			tokensByID: map[string]*token{},
 		}
 	}
-
 	for _, t := range Transitions {
-		ret.transitionsByID[t.ID] = &transition{
-			Transition: t,
-		}
+		ret.transitionsByID[t.ID] = &transition{Transition: t}
 	}
-
 	for _, a := range InputArcs {
-		ret.inputArcsByID[a.ID] = &inputArc{
-			InputArc: a,
-		}
+		ret.inputArcsByID[a.ID] = &inputArc{InputArc: a}
 	}
-
 	for _, a := range OutputArcs {
-		ret.outputArcsByID[a.ID] = &outputArc{
-			OutputArc: a,
-		}
+		ret.outputArcsByID[a.ID] = &outputArc{OutputArc: a}
 	}
-
 	for _, t := range Tokens {
-		ret.tokensByID[t.ID] = &token{
-			Token: t,
-		}
+		ret.tokensByID[t.ID] = &token{Token: t}
 	}
 
 	if err := ret.connectPointers(); err != nil {
