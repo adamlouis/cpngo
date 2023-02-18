@@ -15,6 +15,14 @@ type Net struct {
 	tokensByID      map[string]*token
 }
 
+type Summary struct {
+	Places      []Place      `json:"places"`
+	Transitions []Transition `json:"transitions"`
+	InputArcs   []InputArc   `json:"input_arcs"`
+	OutputArcs  []OutputArc  `json:"output_arcs"`
+	Tokens      []Token      `json:"tokens"`
+}
+
 type Place struct {
 	ID string `json:"id"`
 }
@@ -136,6 +144,15 @@ func (n *Net) Tokens() []Token {
 		ret = append(ret, t.Token)
 	}
 	return ret
+}
+func (n *Net) Summary() Summary {
+	return Summary{
+		Places:      n.Places(),
+		Transitions: n.Transitions(),
+		InputArcs:   n.InputArcs(),
+		OutputArcs:  n.OutputArcs(),
+		Tokens:      n.Tokens(),
+	}
 }
 
 func (n *Net) Enabled() []*Transition {
