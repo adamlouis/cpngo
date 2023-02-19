@@ -1,6 +1,17 @@
+let editorRef;
+let cytoscapeRef;
+let cytoscaleEl;
+
+const layout = {
+  name: "breadthfirst",
+  directed: true,
+};
+
 const state = {
-  error: "",
+  didInit: false,
+  updateEditor: true,
   useWasm: false,
+  error: "",
   net: {
     places: [
       { id: "p1" },
@@ -28,6 +39,25 @@ const state = {
 };
 
 async function init() {
+  if (state.didInit) {
+    return;
+  }
+  state.didInit = true;
+
+  cytoscaleEl = document.getElementById("net-cytoscape");
+
+  editorRef = ace.edit("net-editor");
+  editorRef.session.setMode("ace/mode/json");
+  editorRef.getSession().on("change", function () {
+    try {
+      const net = JSON.parse(editorRef.getValue());
+      state.net = net;
+      render();
+    } catch (e) {}
+  });
+
+  cytoscapeRef = cytoscape(createCyctoscapeData([]));
+
   render();
 
   const res = await WebAssembly.instantiateStreaming(
@@ -38,13 +68,50 @@ async function init() {
   go.run(res.instance);
 }
 
+function createCyctoscapeData(elements) {
+  return {
+    container: cytoscaleEl,
+    elements: elements,
+    style: [
+      {
+        selector: "node[kind='transition']",
+        style: {
+          "background-color": "blue",
+          shape: "rectangle",
+        },
+      },
+      {
+        selector: "node[kind='place']",
+        style: {
+          "background-color": "red",
+          label: `data(tokens)`,
+          "font-size": "36px",
+        },
+      },
+
+      {
+        selector: "edge",
+        style: {
+          width: 3,
+          "line-color": "#ccc",
+          "target-arrow-color": "#ccc",
+          "target-arrow-shape": "triangle",
+          "curve-style": "bezier",
+        },
+      },
+    ],
+
+    layout,
+  };
+}
+
 function render() {
   document.getElementById("error-banner").innerText = state.error;
-  document.getElementById("net-editor").innerText = JSON.stringify(
-    state.net,
-    null,
-    2
-  );
+
+  if (state.updateEditor) {
+    state.updateEditor = false;
+    editorRef.session.setValue(JSON.stringify(state.net, null, 2));
+  }
 
   const tokensByPlace = {};
   for (const token of state.net.tokens) {
@@ -94,43 +161,8 @@ function render() {
     });
   }
 
-  var cytoscapeRef = cytoscape({
-    container: document.getElementById("net-cytoscape"),
-    elements: elements,
-    style: [
-      {
-        selector: "node[kind='transition']",
-        style: {
-          "background-color": "blue",
-          shape: "rectangle",
-        },
-      },
-      {
-        selector: "node[kind='place']",
-        style: {
-          "background-color": "red",
-          label: `data(tokens)`,
-          "font-size": "36px",
-        },
-      },
-
-      {
-        selector: "edge",
-        style: {
-          width: 3,
-          "line-color": "#ccc",
-          "target-arrow-color": "#ccc",
-          "target-arrow-shape": "triangle",
-          "curve-style": "bezier",
-        },
-      },
-    ],
-
-    layout: {
-      name: "breadthfirst",
-      directed: true,
-    },
-  });
+  cytoscapeRef.json(createCyctoscapeData(elements));
+  cytoscapeRef.layout(layout).run();
 }
 
 function fire() {
@@ -153,6 +185,8 @@ async function fireServer() {
   let txt = "";
   try {
     state.net = JSON.parse(await res.text()).net;
+    state.updateEditor = true;
+    state.error = "";
   } catch (err) {
     state.error = txt;
   }
@@ -166,6 +200,8 @@ async function fireWasm() {
   try {
     txt = GoFire(JSON.stringify(state.net));
     state.net = JSON.parse(txt);
+    state.updateEditor = true;
+    state.error = "";
   } catch (err) {
     state.error = `${txt}`;
   }

@@ -33,16 +33,15 @@ pre {
 }
 
 #net-editor {
-  min-width: 800px;
+  width: 800px;
+  height: 1200px;
   border: solid black 2px;
-  padding: 32px;
   margin-right: 16px;
 }
 
 #net-cytoscape {
-  height: 800px;
   width: 800px;
-  margin-bottom: 40px;
+  height: 1200px;
   border: solid black 2px;
 }
 
