@@ -19,13 +19,10 @@ var (
 )
 
 type Server struct {
-	Net *cpngo.Net
+	Port int
 }
 
 func (s *Server) Serve() error {
-	if s.Net == nil {
-		return fmt.Errorf("cannot run server - net is nil")
-	}
 	webFS, err := fs.Sub(rootFS, "web")
 	if err != nil {
 		return err
@@ -34,16 +31,16 @@ func (s *Server) Serve() error {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
-	r.Post("/fire", s.fireTransitionHandler)
+	r.Post("/fire", s.handlePostFire)
 	r.Handle("/*", http.FileServer(http.FS(webFS)))
-	return http.ListenAndServe(":8080", r)
+	return http.ListenAndServe(fmt.Sprintf(":%d", s.Port), r)
 }
 
 type RequestFire struct {
-	Net cpngo.Summary `json:"net"`
+	Net cpngo.Net `json:"net"`
 }
 
-func (s *Server) fireTransitionHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) handlePostFire(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -56,8 +53,6 @@ func (s *Server) fireTransitionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(string(body))
-
 	req := &RequestFire{}
 	if err := json.Unmarshal(body, req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -65,26 +60,26 @@ func (s *Server) fireTransitionHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	net, err := cpngo.NewNet(
-		req.Net.Places,
-		req.Net.Transitions,
-		req.Net.InputArcs,
-		req.Net.OutputArcs,
-		req.Net.Tokens,
-	)
+	rnr, err := cpngo.NewRunner(&cpngo.Net{
+		Places:      req.Net.Places,
+		Transitions: req.Net.Transitions,
+		InputArcs:   req.Net.InputArcs,
+		OutputArcs:  req.Net.OutputArcs,
+		Tokens:      req.Net.Tokens,
+	})
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 
-	if err := net.FireAny(); err != nil {
+	if err := rnr.FireAny(); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(err.Error()))
 		return
 	}
 
-	ret, err := json.Marshal(net.Summary())
+	ret, err := json.Marshal(rnr.Net())
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(err.Error()))

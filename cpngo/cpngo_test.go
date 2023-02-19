@@ -1,8 +1,6 @@
 package cpngo_test
 
 import (
-	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/adamlouis/cpngo/cpngo"
@@ -10,22 +8,22 @@ import (
 )
 
 func TestCPNEmpty(t *testing.T) {
-	n, err := cpngo.NewNet(
+	rnr, err := cpngo.NewRunner(&cpngo.Net{
 		[]cpngo.Place{},
 		[]cpngo.Transition{},
 		[]cpngo.InputArc{},
 		[]cpngo.OutputArc{},
 		[]cpngo.Token{},
-	)
+	})
 
 	require.NoError(t, err)
-	ts := n.Enabled()
+	ts := rnr.Enabled()
 	require.Len(t, ts, 0)
-	require.Error(t, n.FireAny())
+	require.Error(t, rnr.FireAny())
 }
 
 func TestExampleCPN(t *testing.T) {
-	n, err := cpngo.NewNet(
+	rnr, err := cpngo.NewRunner(&cpngo.Net{
 		[]cpngo.Place{
 			{ID: "p1"},
 			{ID: "p2"},
@@ -55,43 +53,38 @@ func TestExampleCPN(t *testing.T) {
 		[]cpngo.Token{
 			{ID: "t1", PlaceID: "p1", Color: "foobar"},
 		},
-	)
-
-	j, err := json.Marshal(n.Summary())
-	fmt.Println(string(j))
-	require.FailNow(t, "foo")
+	})
 
 	require.NoError(t, err)
-	require.Len(t, n.Enabled(), 1, "expected 1 enabled transition")
-	tks := n.Tokens()
+	require.Len(t, rnr.Enabled(), 1, "expected 1 enabled transition")
+	tks := rnr.Tokens()
 	require.Len(t, tks, 1, "expected 1 tokens")
 	require.Equal(t, tks[0].PlaceID, "p1")
 
-	require.NoError(t, n.FireAny())
-	require.Len(t, n.Enabled(), 2, "expected 2 enabled transitions")
-	tks = n.Tokens()
+	require.NoError(t, rnr.FireAny())
+	require.Len(t, rnr.Enabled(), 2, "expected 2 enabled transitions")
+	tks = rnr.Tokens()
 	require.Len(t, tks, 2, "expected 2 tokens")
 
-	require.NoError(t, n.FireAny())
-	require.Len(t, n.Enabled(), 2, "expected 2 enabled transitions")
-	tks = n.Tokens()
+	require.NoError(t, rnr.FireAny())
+	require.Len(t, rnr.Enabled(), 2, "expected 2 enabled transitions")
+	tks = rnr.Tokens()
 	require.Len(t, tks, 2, "expected 2 tokens")
 
-	require.NoError(t, n.FireAny())
-	require.Len(t, n.Enabled(), 1, "expected 1 enabled transition")
-	tks = n.Tokens()
+	require.NoError(t, rnr.FireAny())
+	require.Len(t, rnr.Enabled(), 1, "expected 1 enabled transition")
+	tks = rnr.Tokens()
 	require.Len(t, tks, 2, "expected 2 tokens")
 
-	require.NoError(t, n.FireAny())
-	require.Len(t, n.Enabled(), 1, "expected 1 enabled transition")
-	tks = n.Tokens()
+	require.NoError(t, rnr.FireAny())
+	require.Len(t, rnr.Enabled(), 1, "expected 1 enabled transition")
+	tks = rnr.Tokens()
 	require.Len(t, tks, 2, "expected 2 token")
 
-	require.NoError(t, n.FireAny())
-	require.Len(t, n.Enabled(), 0, "expected 0 enabled transitions")
-	tokens := n.Tokens()
+	require.NoError(t, rnr.FireAny())
+	require.Len(t, rnr.Enabled(), 0, "expected 0 enabled transitions")
+	tokens := rnr.Tokens()
 	require.Len(t, tokens, 2, "expected 2 tokens")
 	require.Equal(t, "p5", tokens[0].PlaceID, "expected token in p5")
 	require.Equal(t, "p5", tokens[1].PlaceID, "expected token in p5")
-
 }
