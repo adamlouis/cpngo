@@ -5,6 +5,7 @@ let cytoscaleEl;
 const layout = {
   name: "breadthfirst",
   directed: true,
+  roots: ["p1"],
 };
 
 const state = {
