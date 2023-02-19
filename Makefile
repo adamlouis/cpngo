@@ -15,13 +15,10 @@ build-go: FORCE
 
 build-web:
 	# update cnpgo.wasm
-	cp build/cpngo.wasm web/
-	# update docs (GitHub Pages)
-	rm -rf docs
-	cp -r web docs
+	cp build/cpngo.wasm docs/
 	# update embedded go webpage
 	rm -rf internal/server/web
-	cp -r web internal/server/web
+	cp -r docs internal/server/web
 	# remove wasm file from embedded go webpage
 	rm -rf internal/server/web/*wasm*
 
