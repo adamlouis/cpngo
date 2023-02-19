@@ -78,14 +78,14 @@ function createCyctoscapeData(elements) {
       {
         selector: "node[kind='transition']",
         style: {
-          "background-color": "blue",
+          "background-color": "#CE3262",
           shape: "rectangle",
         },
       },
       {
         selector: "node[kind='place']",
         style: {
-          "background-color": "red",
+          "background-color": "#00A29C",
           label: `data(tokens)`,
           "font-size": "36px",
         },
@@ -95,8 +95,8 @@ function createCyctoscapeData(elements) {
         selector: "edge",
         style: {
           width: 3,
-          "line-color": "#ccc",
-          "target-arrow-color": "#ccc",
+          "line-color": "#000",
+          "target-arrow-color": "#000",
           "target-arrow-shape": "triangle",
           "curve-style": "bezier",
         },

@@ -57,7 +57,7 @@ pre {
 }
 
 #error-banner {
-  color: crimson;
+  color: #ce3262;
   min-height: 32px;
   display: flex;
   flex-direction: column;
