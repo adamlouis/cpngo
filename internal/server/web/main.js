@@ -33,6 +33,7 @@ const state = {
       { id: "t2p4", from_id: "t2", to_id: "p4" },
       { id: "t3p4", from_id: "t3", to_id: "p4" },
       { id: "t4p5", from_id: "t4", to_id: "p5" },
+      { id: "t4p1", from_id: "t4", to_id: "p1" },
     ],
     tokens: [{ id: "t1", place_id: "p1", color: "foobar" }],
   },

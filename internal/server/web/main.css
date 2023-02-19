@@ -22,7 +22,6 @@ pre {
 .content {
   padding: 16px 32px;
 }
-
 .header {
   background-color: #00add8;
   color: #fff;
@@ -33,29 +32,21 @@ pre {
   justify-content: space-between;
   align-items: center;
 }
-
 .header a {
   font-size: 18px;
 }
-
-#net-editor {
-  width: 800px;
-  height: 1200px;
-  border: solid black 2px;
-  margin-right: 16px;
+.button-row {
+  display: flex;
 }
-
-#net-cytoscape {
-  width: 800px;
-  height: 1200px;
-  border: solid black 2px;
+.button-row button {
+  margin-right: 10px;
+  min-width: 100px;
 }
 
 #net-container {
   display: flex;
   align-items: flex-start;
 }
-
 #error-banner {
   color: #ce3262;
   min-height: 32px;
@@ -64,11 +55,14 @@ pre {
   justify-content: center;
   font-size: 16px;
 }
-
-.button-row {
-  display: flex;
+#net-editor {
+  width: 800px;
+  height: 1200px;
+  border: solid black 2px;
+  margin-right: 16px;
 }
-.button-row button {
-  margin-right: 10px;
-  min-width: 100px;
+#net-cytoscape {
+  width: 800px;
+  height: 1200px;
+  border: solid black 2px;
 }
