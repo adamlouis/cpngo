@@ -47,6 +47,9 @@ func (s *Server) Serve() error {
 type RequestFire struct {
 	Net cpngo.Net `json:"net"`
 }
+type ResponseFire struct {
+	Net cpngo.Net `json:"net"`
+}
 
 func (s *Server) handlePostFire(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
@@ -68,13 +71,7 @@ func (s *Server) handlePostFire(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rnr, err := cpngo.NewRunner(&cpngo.Net{
-		Places:      req.Net.Places,
-		Transitions: req.Net.Transitions,
-		InputArcs:   req.Net.InputArcs,
-		OutputArcs:  req.Net.OutputArcs,
-		Tokens:      req.Net.Tokens,
-	})
+	rnr, err := cpngo.NewRunner(&req.Net)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		_, _ = w.Write([]byte(err.Error()))
@@ -87,7 +84,7 @@ func (s *Server) handlePostFire(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ret, err := json.Marshal(rnr.Net())
+	ret, err := json.Marshal(&ResponseFire{Net: rnr.Net()})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte(err.Error()))
