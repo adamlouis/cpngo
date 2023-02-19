@@ -1,6 +1,8 @@
 package cpngo_test
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/adamlouis/cpngo/cpngo"
@@ -55,6 +57,10 @@ func TestExampleCPN(t *testing.T) {
 		},
 	)
 
+	j, err := json.Marshal(n.Summary())
+	fmt.Println(string(j))
+	require.FailNow(t, "foo")
+
 	require.NoError(t, err)
 	require.Len(t, n.Enabled(), 1, "expected 1 enabled transition")
 	tks := n.Tokens()
@@ -87,4 +93,5 @@ func TestExampleCPN(t *testing.T) {
 	require.Len(t, tokens, 2, "expected 2 tokens")
 	require.Equal(t, "p5", tokens[0].PlaceID, "expected token in p5")
 	require.Equal(t, "p5", tokens[1].PlaceID, "expected token in p5")
+
 }

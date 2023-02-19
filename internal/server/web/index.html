@@ -1,0 +1,201 @@
+<html>
+  <head>
+    <title>cpngo</title>
+
+    <script src="/cytoscape.min.js"></script>
+    <style>
+      body {
+        font-family: monospace;
+        font-size: 14px;
+      }
+      button {
+        margin: 10px 10px 10px 0px;
+        padding: 10px;
+        border: 1px solid #000;
+        border-radius: 5px;
+        background-color: #fff;
+        cursor: pointer;
+        font-weight: bold;
+        font-size: 16px;
+      }
+      pre {
+        background-color: #eee;
+        padding: 10px;
+      }
+    </style>
+  </head>
+
+  <script>
+    const state = {
+      net: {
+        places: [
+          { id: "p1" },
+          { id: "p2" },
+          { id: "p3" },
+          { id: "p4" },
+          { id: "p5" },
+        ],
+        transitions: [{ id: "t1" }, { id: "t2" }, { id: "t3" }, { id: "t4" }],
+        input_arcs: [
+          { id: "p1t1", from_id: "p1", to_id: "t1" },
+          { id: "p2t2", from_id: "p2", to_id: "t2" },
+          { id: "p3t3", from_id: "p3", to_id: "t3" },
+          { id: "p4t4", from_id: "p4", to_id: "t4" },
+        ],
+        output_arcs: [
+          { id: "t1p2", from_id: "t1", to_id: "p2" },
+          { id: "t1p3", from_id: "t1", to_id: "p3" },
+          { id: "t2p4", from_id: "t2", to_id: "p4" },
+          { id: "t3p4", from_id: "t3", to_id: "p4" },
+          { id: "t4p5", from_id: "t4", to_id: "p5" },
+        ],
+        tokens: [{ id: "t1", place_id: "p1", color: "foobar" }],
+      },
+    };
+
+    function render() {
+      const el = document.getElementById("net-show");
+      el.innerText = JSON.stringify(state.net, null, 2);
+
+      const tokensByPlace = {};
+      for (const token of state.net.tokens) {
+        if (!tokensByPlace[token.place_id]) {
+          tokensByPlace[token.place_id] = [];
+        }
+        tokensByPlace[token.place_id].push(token);
+      }
+
+      const celements = [];
+      for (const place of state.net.places) {
+        const count = `${tokensByPlace[place.id]?.length || 0}`;
+        celements.push({
+          data: {
+            id: place.id,
+            kind: "place",
+            tokens: `${count}`,
+          },
+        });
+      }
+      for (const transition of state.net.transitions) {
+        celements.push({
+          data: {
+            id: transition.id,
+            kind: "transition",
+          },
+        });
+      }
+      for (const arc of state.net.input_arcs) {
+        celements.push({
+          data: {
+            id: arc.id,
+            source: arc.from_id,
+            target: arc.to_id,
+            kind: "input_arc",
+          },
+        });
+      }
+      for (const arc of state.net.output_arcs) {
+        celements.push({
+          data: {
+            id: arc.id,
+            source: arc.from_id,
+            target: arc.to_id,
+            kind: "output_arc",
+          },
+        });
+      }
+
+      var cy = cytoscape({
+        container: document.getElementById("cy"), // container to render in
+
+        elements: celements,
+
+        style: [
+          {
+            selector: "node[kind='transition']",
+            style: {
+              "background-color": "blue",
+              shape: "rectangle",
+            },
+          },
+          {
+            selector: "node[kind='place']",
+            style: {
+              "background-color": "red",
+              label: `data(tokens)`,
+              "font-size": "36px",
+            },
+          },
+
+          {
+            selector: "edge",
+            style: {
+              width: 3,
+              "line-color": "#ccc",
+              "target-arrow-color": "#ccc",
+              "target-arrow-shape": "triangle",
+              "curve-style": "bezier",
+            },
+          },
+        ],
+
+        layout: {
+          name: "breadthfirst",
+          directed: true,
+        },
+      });
+    }
+
+    async function fire() {
+      const oldNet = state.net;
+      const res = await fetch("/fire", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ net: oldNet }),
+      });
+      let txt = "";
+      try {
+        txt = await res.text();
+        const newNet = JSON.parse(txt);
+        state.net = newNet;
+      } catch (err) {
+        document.getElementById("err").innerText = txt;
+      }
+      render();
+    }
+  </script>
+
+  <body>
+    <h1>cpngo</h1>
+    <hr />
+    <div style="display: flex; margin: 10px 0px">
+      <button onclick="fire()">fire</button>
+    </div>
+    <div id="err" style="padding: 20px 0px; color: crimson"></div>
+    <div
+      id="cy"
+      style="
+        height: 800px;
+        width: 800px;
+        margin-bottom: 40px;
+        border: solid black 2px;
+      "
+    ></div>
+    <hr />
+    <pre id="net-show" style="padding: 20px; margin-bottom: 60px"></pre>
+
+    <!-- <div style="width: 100%">
+      <textarea
+        id="net-edit"
+        style="height: 800px; width: 100%"
+        readonly
+      ></textarea>
+    </div> -->
+  </body>
+
+  <script>
+    render();
+  </script>
+</html>
