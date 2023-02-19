@@ -72,6 +72,8 @@ function createCyctoscapeData(elements) {
   return {
     container: cytoscaleEl,
     elements: elements,
+    userPanningEnabled: false,
+    userZoomingEnabled: false,
     style: [
       {
         selector: "node[kind='transition']",

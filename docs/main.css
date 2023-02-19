@@ -26,10 +26,16 @@ pre {
 .header {
   background-color: #00add8;
   color: #fff;
-  padding: 16px;
-  width: 100%;
+  padding: 12px;
   font-weight: bold;
-  font-size: 32px;
+  font-size: 28px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header a {
+  font-size: 18px;
 }
 
 #net-editor {
