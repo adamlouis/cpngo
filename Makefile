@@ -1,7 +1,7 @@
 
 all: lint test build
 
-lint:
+lint: FORCE
 	golangci-lint run
 
 test: FORCE
