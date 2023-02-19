@@ -7,6 +7,8 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/adamlouis/cpngo/cpngo"
 	"github.com/go-chi/chi/v5"
@@ -32,7 +34,13 @@ func (s *Server) Serve() error {
 	r.Use(middleware.Logger)
 
 	r.Post("/fire", s.handlePostFire)
-	r.Handle("/*", http.FileServer(http.FS(webFS)))
+
+	if strings.ToLower(os.Getenv("MODE")) == "dev" {
+		r.Handle("/*", http.FileServer(http.Dir("internal/server/web")))
+	} else {
+		r.Handle("/*", http.FileServer(http.FS(webFS)))
+	}
+
 	return http.ListenAndServe(fmt.Sprintf(":%d", s.Port), r)
 }
 

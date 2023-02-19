@@ -12,6 +12,6 @@ build: FORCE
 
 
 serve: FORCE
-	go run cmd/main.go serve
+	MODE=dev go run cmd/main.go serve
 
 .PHONY: FORCE
