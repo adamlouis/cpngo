@@ -24,6 +24,7 @@ func TestExpr(t *testing.T) {
 		`len(Examples)`,
 		`Examples[0].Name`,
 		`Examples[0].Name + "-test-" + Examples[1].Name`,
+		`{a: 1, b: "hello world!"}["b"]`,
 	}
 
 	for _, code := range cases {
