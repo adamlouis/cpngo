@@ -1,6 +1,8 @@
 package cpngo_test
 
 import (
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/adamlouis/cpngo/cpngo"
@@ -87,4 +89,34 @@ func TestExampleCPN(t *testing.T) {
 	require.Len(t, tokens, 2, "expected 2 tokens")
 	require.Equal(t, "p5", tokens[0].PlaceID, "expected token in p5")
 	require.Equal(t, "p5", tokens[1].PlaceID, "expected token in p5")
+}
+
+func TestExpr2(t *testing.T) {
+	rnr, err := cpngo.NewRunner(&cpngo.Net{
+		[]cpngo.Place{
+			{ID: "p1"},
+			{ID: "p2"},
+			{ID: "p3"},
+		},
+		[]cpngo.Transition{
+			{ID: "t1"},
+			{ID: "t2"},
+		},
+		[]cpngo.InputArc{
+			{ID: "p1t1", FromID: "p1", ToID: "t1"},
+			{ID: "p2t2", FromID: "p2", ToID: "t2"},
+		},
+		[]cpngo.OutputArc{
+			{ID: "t1p2", FromID: "t1", ToID: "p2"},
+			{ID: "t2p3", FromID: "t2", ToID: "p3"},
+		},
+		[]cpngo.Token{
+			{ID: "tk1", PlaceID: "p1", Color: "foobar"},
+			{ID: "tk2", PlaceID: "p1", Color: "buzz"},
+		},
+	})
+	require.NoError(t, err)
+
+	j, _ := json.Marshal(rnr.Net())
+	fmt.Println(string(j))
 }

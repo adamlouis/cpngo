@@ -149,6 +149,7 @@ func (r *Runner) isTransitionEnabled(id string) (bool, error) {
 	}
 
 	for _, p := range t.inputPlaces {
+		// TODO(adam): check arc expression here
 		if len(p.tokensByID) < 1 {
 			return false, nil
 		}
@@ -196,6 +197,7 @@ func (r *Runner) Fire(id string) error {
 		}
 	}
 
+	// TODO(adam): use arc expression here
 	for _, p := range t.outputPlaces {
 		tk := &token{
 			Token: Token{

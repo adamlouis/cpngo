@@ -16,11 +16,13 @@ type Transition struct {
 }
 type InputArc struct {
 	ID     string `json:"id"`
+	Expr   string `json:"expr"`
 	FromID string `json:"from_id"`
 	ToID   string `json:"to_id"`
 }
 type OutputArc struct {
 	ID     string `json:"id"`
+	Expr   string `json:"expr"`
 	FromID string `json:"from_id"`
 	ToID   string `json:"to_id"`
 }
