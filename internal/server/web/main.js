@@ -2,11 +2,32 @@ let editorRef;
 let cytoscapeRef;
 let cytoscaleEl;
 
+// const layout = {
+//   name: "random",
+// };
 const layout = {
   name: "breadthfirst",
   directed: true,
   roots: ["p1"],
 };
+// const layout = {
+//   name: "cose-bilkent",
+//   animate: false,
+//   fit: true,
+//   padding: 50,
+//   componentSpacing: 50,
+//   randomize: false,
+//   numIter: 100000,
+// };
+// const layout = {
+//   name: "cose",
+//   animate: false,
+//   fit: true,
+//   padding: 50,
+//   componentSpacing: 50,
+//   randomize: false,
+//   numIter: 100000,
+// };
 
 const state = {
   didInit: false,
@@ -29,7 +50,12 @@ const state = {
       { id: "p4t4", from_id: "p4", to_id: "t4" },
     ],
     output_arcs: [
-      { id: "t1p2", from_id: "t1", to_id: "p2" },
+      {
+        id: "t1p2",
+        from_id: "t1",
+        to_id: "p2",
+        expr: 'rand() > 0.5 ? "SUCCESS" : "FAILURE"',
+      },
       { id: "t1p3", from_id: "t1", to_id: "p3" },
       { id: "t2p4", from_id: "t2", to_id: "p4" },
       { id: "t3p4", from_id: "t3", to_id: "p4" },
@@ -61,6 +87,7 @@ async function init() {
   cytoscapeRef = cytoscape(createCyctoscapeData([]));
 
   render();
+  runLayout();
 
   const res = await WebAssembly.instantiateStreaming(
     fetch("cpngo.wasm"),
@@ -166,7 +193,13 @@ function render() {
   }
 
   cytoscapeRef.json(createCyctoscapeData(elements));
+}
+
+function runLayout() {
   cytoscapeRef.layout(layout).run();
+}
+function runLayoutRand() {
+  cytoscapeRef.layout({ name: "random" }).run();
 }
 
 function fire() {

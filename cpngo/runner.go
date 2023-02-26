@@ -193,10 +193,10 @@ func (r *Runner) isTransitionEnabled(id string) (bool, error) {
 }
 
 func compile(code string) (*vm.Program, error) {
-	randf := expr.Function("randf", func(params ...any) (any, error) {
+	rand := expr.Function("rand", func(params ...any) (any, error) {
 		return rand.Float64(), nil
 	})
-	return expr.Compile(code, randf)
+	return expr.Compile(code, rand)
 }
 
 func (r *Runner) inputTokenOk(tk *token, a *inputArc) (bool, error) {
@@ -235,6 +235,7 @@ func nextColor(colors []any, a *outputArc) (any, error) {
 	v, err := expr.Run(prog, map[string]any{
 		"colors": colors,
 	})
+	fmt.Println("colors", colors, "expr", a.Expr, "v", v, "err", err)
 	if err != nil {
 		return nil, fmt.Errorf("failed to run expression %q: %w", a.Expr, err)
 	}
@@ -270,6 +271,7 @@ func (r *Runner) Fire(id string) error {
 		return fmt.Errorf("transition %q is not enabled", id)
 	}
 
+	// TODO(adamlouis): no tokens may be enabled if arc expression is non-deterministic (e.g. rand())
 	consumeTokens := []*token{}
 	for _, p := range t.inputPlaces {
 		inputArc, err := r.getInputArc(p.ID, t.ID)
@@ -309,7 +311,7 @@ func (r *Runner) Fire(id string) error {
 		}
 		color, err := nextColor(consumedColors, oa)
 		if err != nil {
-			return fmt.Errorf("transition %q failed to produce token: %w", id, err)
+			return fmt.Errorf("transition %q failed to produce token when getting next color: %w", id, err)
 		}
 		tk := &token{
 			Token: Token{
