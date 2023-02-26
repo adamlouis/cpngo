@@ -255,7 +255,6 @@ func (r *Runner) FireAny() error {
 
 func (r *Runner) Fire(id string) error {
 	// TODO(adamlouis): implement execution polices
-	// TODO(adamlouis): implement color
 	// TODO(adamlouis): implement guards
 
 	t, ok := r.transitionsByID[id]
