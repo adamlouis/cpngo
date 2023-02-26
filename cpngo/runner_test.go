@@ -1,8 +1,6 @@
 package cpngo_test
 
 import (
-	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/adamlouis/cpngo/cpngo"
@@ -91,7 +89,7 @@ func TestExampleCPN(t *testing.T) {
 	require.Equal(t, "p5", tokens[1].PlaceID, "expected token in p5")
 }
 
-func TestExpr2(t *testing.T) {
+func TestExpr(t *testing.T) {
 	rnr, err := cpngo.NewRunner(&cpngo.Net{
 		[]cpngo.Place{
 			{ID: "p1"},
@@ -103,12 +101,12 @@ func TestExpr2(t *testing.T) {
 			{ID: "t2"},
 		},
 		[]cpngo.InputArc{
-			{ID: "p1t1", FromID: "p1", ToID: "t1"},
+			{ID: "p1t1", FromID: "p1", ToID: "t1", Expr: "color == \"foobar\""},
 			{ID: "p2t2", FromID: "p2", ToID: "t2"},
 		},
 		[]cpngo.OutputArc{
-			{ID: "t1p2", FromID: "t1", ToID: "p2"},
-			{ID: "t2p3", FromID: "t2", ToID: "p3"},
+			{ID: "t1p2", FromID: "t1", ToID: "p2", Expr: "42"},
+			{ID: "t2p3", FromID: "t2", ToID: "p3", Expr: "colors[0] + 42"},
 		},
 		[]cpngo.Token{
 			{ID: "tk1", PlaceID: "p1", Color: "foobar"},
@@ -117,6 +115,27 @@ func TestExpr2(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	j, _ := json.Marshal(rnr.Net())
-	fmt.Println(string(j))
+	require.NoError(t, err)
+	require.Len(t, rnr.Enabled(), 1, "expected 1 enabled transition")
+	tks := rnr.Tokens()
+	require.Len(t, tks, 2, "expected 2 tokens")
+
+	require.NoError(t, rnr.FireAny())
+	require.Len(t, rnr.Enabled(), 1, "expected 1 enabled transitions")
+	tks = rnr.Tokens()
+	require.Len(t, tks, 2, "expected 2 tokens")
+
+	require.NoError(t, rnr.FireAny())
+	require.Len(t, rnr.Enabled(), 0, "expected 0 enabled transitions")
+	tks = rnr.Tokens()
+	require.Len(t, tks, 2, "expected 2 tokens")
+
+	for _, tk := range tks {
+		if tk.PlaceID == "p1" {
+			require.Equal(t, "buzz", tk.Color)
+		}
+		if tk.PlaceID == "p3" {
+			require.Equal(t, 84, tk.Color)
+		}
+	}
 }

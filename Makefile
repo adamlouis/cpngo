@@ -5,7 +5,7 @@ lint: FORCE
 	golangci-lint run
 
 test: FORCE
-	go test -count=10 ./...
+	go test -count=20 ./...
 
 build: build-go build-web
 

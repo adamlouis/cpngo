@@ -2,8 +2,11 @@ package cpngo
 
 import (
 	"fmt"
+	"math/rand"
 	"sort"
 
+	"github.com/antonmedv/expr"
+	"github.com/antonmedv/expr/vm"
 	"github.com/google/uuid"
 )
 
@@ -138,6 +141,23 @@ func (r *Runner) Enabled() []*Transition {
 	return ret
 }
 
+func (r *Runner) getInputArc(fromPlaceID, toTransitionID string) (*inputArc, error) {
+	for _, a := range r.inputArcsByID {
+		if a.FromID == fromPlaceID && a.ToID == toTransitionID {
+			return a, nil
+		}
+	}
+	return nil, fmt.Errorf("input arc from %q to %q does not exist", fromPlaceID, toTransitionID)
+}
+func (r *Runner) getOutputArc(fromTransitionID, toPlaceID string) (*outputArc, error) {
+	for _, a := range r.outputArcsByID {
+		if a.FromID == fromTransitionID && a.ToID == toPlaceID {
+			return a, nil
+		}
+	}
+	return nil, fmt.Errorf("output arc from %q to %q does not exist", fromTransitionID, toPlaceID)
+}
+
 func (r *Runner) isTransitionEnabled(id string) (bool, error) {
 	t, ok := r.transitionsByID[id]
 	if !ok {
@@ -149,12 +169,76 @@ func (r *Runner) isTransitionEnabled(id string) (bool, error) {
 	}
 
 	for _, p := range t.inputPlaces {
-		// TODO(adam): check arc expression here
-		if len(p.tokensByID) < 1 {
+		arc, err := r.getInputArc(p.ID, t.ID)
+		if err != nil {
+			return false, err
+		}
+
+		anyOk := false
+		for _, tk := range p.tokensByID {
+			ok, err := r.inputTokenOk(tk, arc)
+			if err != nil {
+				return false, err
+			}
+			if ok {
+				anyOk = true
+				break
+			}
+		}
+		if !anyOk {
 			return false, nil
 		}
 	}
 	return true, nil
+}
+
+func compile(code string) (*vm.Program, error) {
+	randf := expr.Function("randf", func(params ...any) (any, error) {
+		return rand.Float64(), nil
+	})
+	return expr.Compile(code, randf)
+}
+
+func (r *Runner) inputTokenOk(tk *token, a *inputArc) (bool, error) {
+	if a.Expr == "" {
+		return true, nil
+	}
+
+	prog, err := compile(a.Expr)
+	if err != nil {
+		return false, fmt.Errorf("failed to compile expression %q: %w", a.Expr, err)
+	}
+
+	v, err := expr.Run(prog, map[string]any{
+		"color": tk.Color,
+	})
+	if err != nil {
+		return false, fmt.Errorf("failed to run expression %q: %w", a.Expr, err)
+	}
+	b, ok := v.(bool)
+	if !ok {
+		return false, fmt.Errorf("expression %q did not return a bool", a.Expr)
+	}
+	return b, nil
+}
+
+func nextColor(colors []any, a *outputArc) (any, error) {
+	if a.Expr == "" {
+		return nil, nil
+	}
+
+	prog, err := compile(a.Expr)
+	if err != nil {
+		return nil, fmt.Errorf("failed to compile expression %q: %w", a.Expr, err)
+	}
+
+	v, err := expr.Run(prog, map[string]any{
+		"colors": colors,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to run expression %q: %w", a.Expr, err)
+	}
+	return v, nil
 }
 
 func (r *Runner) FireAny() error {
@@ -172,7 +256,6 @@ func (r *Runner) Fire(id string) error {
 	// TODO(adamlouis): implement execution polices
 	// TODO(adamlouis): implement color
 	// TODO(adamlouis): implement guards
-	// TODO(adamlouis): implement arc expressions
 
 	t, ok := r.transitionsByID[id]
 	if !ok {
@@ -187,23 +270,52 @@ func (r *Runner) Fire(id string) error {
 		return fmt.Errorf("transition %q is not enabled", id)
 	}
 
+	consumeTokens := []*token{}
 	for _, p := range t.inputPlaces {
-		tkp, err := oneV(p.tokensByID)
+		inputArc, err := r.getInputArc(p.ID, t.ID)
 		if err != nil {
 			return fmt.Errorf("transition %q failed to consume token: %w", id, err)
 		}
-		if err := r.consumeToken((*tkp).ID); err != nil {
-			return fmt.Errorf("transition %q failed to consume token: %w", id, err)
+		foundToken := false
+		for _, tk := range p.tokensByID {
+			ok, err := r.inputTokenOk(tk, inputArc)
+			if err != nil {
+				return fmt.Errorf("transition %q failed to consume token: %w", id, err)
+			}
+			if ok {
+				consumeTokens = append(consumeTokens, tk)
+				foundToken = true
+				break
+			}
+		}
+		if !foundToken {
+			return fmt.Errorf("transition %q failed to consume token", id)
 		}
 	}
 
-	// TODO(adam): use arc expression here
+	consumedColors := []any{}
+	for _, tk := range consumeTokens {
+		if err := r.consumeToken(tk.ID); err != nil {
+			// TODO(adamlouis): if any fails, the net is corrupted & we should roll back
+			return fmt.Errorf("transition %q failed to consume token: %w", tk.ID, err)
+		}
+		consumedColors = append(consumedColors, tk.Color)
+	}
+
 	for _, p := range t.outputPlaces {
+		oa, err := r.getOutputArc(t.ID, p.ID)
+		if err != nil {
+			return fmt.Errorf("transition %q failed to produce token: %w", id, err)
+		}
+		color, err := nextColor(consumedColors, oa)
+		if err != nil {
+			return fmt.Errorf("transition %q failed to produce token: %w", id, err)
+		}
 		tk := &token{
 			Token: Token{
 				ID:      uuid.New().String(),
 				PlaceID: p.ID,
-				Color:   nil,
+				Color:   color,
 			},
 			place: p,
 		}
