@@ -383,10 +383,3 @@ func (r *Runner) connectPointers() error {
 
 	return nil
 }
-
-func oneV[TK comparable, TV any](m map[TK]TV) (*TV, error) {
-	for _, v := range m {
-		return &v, nil
-	}
-	return nil, fmt.Errorf("map is empty")
-}
