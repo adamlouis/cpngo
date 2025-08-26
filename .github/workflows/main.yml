@@ -7,7 +7,7 @@ on:
       - main
 
 jobs:
-  server:
+  make:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/setup-go@v5
