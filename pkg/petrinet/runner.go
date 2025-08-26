@@ -17,6 +17,8 @@ type Runner struct {
 	inputArcs       []*inputArc
 	outputArcs      []*outputArc
 	tokensByID      map[TokenID]*token
+
+	pending map[FireID]Result
 }
 
 // runner is a private interface to help document public methods on the Runner struct
@@ -113,29 +115,36 @@ func NewRunner(n *Net) (*Runner, error) {
 
 type place struct {
 	Place
+
 	tokensByID map[TokenID]*token
+	inputArcs  []*inputArc
+	outputArcs []*outputArc
 }
 
 type transition struct {
 	Transition
+
 	inputPlaces  []*place
 	outputPlaces []*place
 }
 
 type inputArc struct {
 	InputArc
+
 	from *place
 	to   *transition
 }
 
 type outputArc struct {
 	OutputArc
+
 	from *transition
 	to   *place
 }
 
 type token struct {
 	Token
+
 	place *place
 }
 
@@ -194,17 +203,23 @@ func (r *Runner) Net() Net {
 	}
 }
 
+func (r *Runner) Pending() []Result {
+	ret := []Result{}
+	for _, r := range r.pending {
+		ret = append(ret, r)
+	}
+	sort.Slice(ret, func(i, j int) bool { return ret[i].FireID < ret[j].FireID })
+	return ret
+}
+
 func (r *Runner) Enabled() []EnabledTransition {
 	ret := []EnabledTransition{}
 	for _, t := range r.transitionsByID {
-		enabled, err := r.isTransitionEnabled(t.ID)
+		enabled, err := r.listEnabled(t.ID)
 		if err != nil {
 			panic("unreachable: corrupted net: " + err.Error())
 		}
-
-		if enabled {
-			// ret = append(ret, t.Transition)
-		}
+		ret = append(ret, enabled...)
 	}
 	return ret
 }
@@ -248,7 +263,7 @@ func (r *Runner) Fire(id EnabledTransition) (*Result, error) {
 	// 	}
 	// 	foundToken := false
 	// 	for _, tk := range p.tokensByID {
-	// 		ok, err := r.inputTokenOk(tk, inputArc)
+	// 		ok, err := r.tokenSatisifesInputArcExpr(tk, inputArc)
 	// 		if err != nil {
 	// 			return fmt.Errorf("transition %q failed to consume token: %w", id, err)
 	// 		}
@@ -309,71 +324,131 @@ func (r *Runner) FireAny() (*Result, error) {
 	return r.Fire(ts[0])
 }
 
-func (r *Runner) getInputArc(fromPlaceID PlaceID, toTransitionID TransitionID) (*inputArc, error) {
-	for _, a := range r.inputArcs {
-		if a.FromPlaceID == fromPlaceID && a.ToTransitionID == toTransitionID {
-			return a, nil
-		}
-	}
-	return nil, fmt.Errorf("input arc from %q to %q does not exist", fromPlaceID, toTransitionID)
+// func (r *Runner) listInputArcs(fromPlaceID PlaceID, toTransitionID TransitionID) ([]*inputArc, error) {
+// 	ret = []*inputArc{}
+// 	for _, a := range r.inputArcs {
+// 		if a.FromPlaceID == fromPlaceID && a.ToTransitionID == toTransitionID {
+// 			ret = append(ret, a)
+// 		}
+// 	}
+// 	if len(ret) == 0 {
+// 		return nil, fmt.Errorf("input arc from %q to %q does not exist", fromPlaceID, toTransitionID)
+// 	}
+// 	return ret, nil
+// }
+
+// func (r *Runner) listOutputArcs(fromTransitionID TransitionID, toPlaceID PlaceID) ([]*outputArc, error) {
+// 	ret = []*outputArc{}
+// 	for _, a := range r.outputArcs {
+// 		if a.FromTransitionID == fromTransitionID && a.ToPlaceID == toPlaceID {
+// 			ret = append(ret, a)
+// 		}
+// 	}
+// 	if len(ret) == 0 {
+// 		return nil, fmt.Errorf("output arc from %q to %q does not exist", fromTransitionID, toPlaceID)
+// 	}
+// 	return ret, nil
+// }
+
+type inputArcOptions struct {
+	fromPlace *place
+	inputArc  *inputArc
+
+	validTokens []*token
 }
 
-func (r *Runner) getOutputArc(fromTransitionID TransitionID, toPlaceID PlaceID) (*outputArc, error) {
-	for _, a := range r.outputArcs {
-		if a.FromTransitionID == fromTransitionID && a.ToPlaceID == toPlaceID {
-			return a, nil
-		}
-	}
-	return nil, fmt.Errorf("output arc from %q to %q does not exist", fromTransitionID, toPlaceID)
-}
-
-func (r *Runner) isTransitionEnabled(id TransitionID) (bool, error) {
+// listEnabled returns the enabled transitions for the transition ID including the cartesian product of tokens
+func (r *Runner) listEnabled(id TransitionID) ([]EnabledTransition, error) {
 	t, ok := r.transitionsByID[id]
 	if !ok {
-		return false, fmt.Errorf("transition %q does not exist", id)
+		return nil, fmt.Errorf("transition %q does not exist", id)
 	}
 
 	if len(t.inputPlaces) == 0 {
-		panic("unreachable: corrupted net: transition has no input places")
+		return nil, fmt.Errorf("unreachable: corrupted net: transition has no input places")
 	}
 
-	for _, p := range t.inputPlaces {
-		arc, err := r.getInputArc(p.ID, t.ID)
-		if err != nil {
-			return false, err
-		}
+	opts := []inputArcOptions{}
+	for _, place := range t.inputPlaces {
+		for _, arc := range place.inputArcs {
 
-		anyOk := false
-		for _, tk := range p.tokensByID {
-			ok, err := r.inputTokenOk(tk, arc)
-			if err != nil {
-				return false, err
+			validTokens := []*token{}
+
+			for _, tk := range place.tokensByID {
+				ok, err := r.tokenSatisifesInputArcExpr(tk, arc)
+				if err != nil {
+					return nil, err
+				}
+				if ok {
+					validTokens = append(validTokens, tk)
+				}
 			}
-			if ok {
-				anyOk = true
-				break
+
+			if len(validTokens) == 0 {
+				return []EnabledTransition{}, nil
 			}
-		}
-		if !anyOk {
-			return false, nil
+
+			opts = append(opts, inputArcOptions{
+				fromPlace: place,
+				inputArc:  arc,
+
+				validTokens: validTokens,
+			})
 		}
 	}
-	return true, nil
+
+	// TODO: create []EnabledTransition for non-duplicate cartesian product of opts
+
+	return nil, fmt.Errorf("unimplemented")
 }
 
-func compile(code string) (*vm.Program, error) {
+// func (r *Runner) isTransitionEnabled(id TransitionID) (bool, error) {
+// 	t, ok := r.transitionsByID[id]
+// 	if !ok {
+// 		return false, fmt.Errorf("transition %q does not exist", id)
+// 	}
+
+// 	if len(t.inputPlaces) == 0 {
+// 		panic("unreachable: corrupted net: transition has no input places")
+// 	}
+
+// 	for _, p := range t.inputPlaces {
+// 		arc, err := r.getInputArc(p.ID, t.ID)
+// 		if err != nil {
+// 			return false, err
+// 		}
+
+// 		anyOk := false
+// 		for _, tk := range p.tokensByID {
+// 			ok, err := r.tokenSatisifesInputArcExpr(tk, arc)
+// 			if err != nil {
+// 				return false, err
+// 			}
+// 			if ok {
+// 				anyOk = true
+// 				break
+// 			}
+// 		}
+// 		if !anyOk {
+// 			return false, nil
+// 		}
+// 	}
+// 	return true, nil
+// }
+
+func compileExpr(code string) (*vm.Program, error) {
 	rand := expr.Function("rand", func(params ...any) (any, error) {
 		return rand.Float64(), nil
 	})
 	return expr.Compile(code, rand)
 }
 
-func (r *Runner) inputTokenOk(tk *token, a *inputArc) (bool, error) {
+func (r *Runner) tokenSatisifesInputArcExpr(tk *token, a *inputArc) (bool, error) {
 	if a.Expr == "" {
 		return true, nil
 	}
 
-	prog, err := compile(a.Expr)
+	prog, err := compileExpr(a.Expr)
 	if err != nil {
 		return false, fmt.Errorf("failed to compile expression %q: %w", a.Expr, err)
 	}
@@ -384,6 +459,7 @@ func (r *Runner) inputTokenOk(tk *token, a *inputArc) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to run expression %q: %w", a.Expr, err)
 	}
+
 	b, ok := v.(bool)
 	if !ok {
 		return false, fmt.Errorf("expression %q did not return a bool", a.Expr)
@@ -396,7 +472,7 @@ func nextColor(colors []any, a *outputArc) (any, error) {
 		return nil, nil
 	}
 
-	prog, err := compile(a.Expr)
+	prog, err := compileExpr(a.Expr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to compile expression %q: %w", a.Expr, err)
 	}
@@ -404,7 +480,7 @@ func nextColor(colors []any, a *outputArc) (any, error) {
 	v, err := expr.Run(prog, map[string]any{
 		"colors": colors,
 	})
-	fmt.Println("colors", colors, "expr", a.Expr, "v", v, "err", err)
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to run expression %q: %w", a.Expr, err)
 	}
@@ -472,6 +548,8 @@ func (r *Runner) connectPointers() error {
 		arc.to = place
 		transition.outputPlaces = append(transition.outputPlaces, place)
 	}
+
+	// TODO: populate place.inputArcs & place.outputArcs
 
 	return nil
 }

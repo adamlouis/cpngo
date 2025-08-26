@@ -55,7 +55,7 @@ type Token struct {
 
 type EnabledTransition struct {
 	Transition
-	Tokens []Token
+	TokenAssignments map[InputArc]Token
 }
 
 type Result struct {
