@@ -1,16 +1,15 @@
 module github.com/adamlouis/cpngo
 
-go 1.20
+go 1.25
 
 require (
-	github.com/go-chi/chi/v5 v5.0.8
+	github.com/antonmedv/expr v1.12.0
 	github.com/google/uuid v1.3.0
 	github.com/spf13/cobra v1.6.1
 	github.com/stretchr/testify v1.8.1
 )
 
 require (
-	github.com/antonmedv/expr v1.12.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/kr/pretty v0.3.0 // indirect
