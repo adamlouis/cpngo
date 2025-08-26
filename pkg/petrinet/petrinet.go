@@ -2,6 +2,7 @@ package petrinet
 
 import "fmt"
 
+// Net is a petrinet - a collection of Places, Transitions, Arcs, and Tokens.
 type Net struct {
 	Places      []Place      `json:"places"`
 	Transitions []Transition `json:"transitions"`
@@ -11,8 +12,12 @@ type Net struct {
 }
 
 type PlaceID string
+
 type TransitionID string
+
 type TokenID string
+
+type FireID string
 
 type Place struct {
 	ID PlaceID `json:"id"`
@@ -46,4 +51,15 @@ type Token struct {
 	ID        TokenID `json:"id"`
 	OnPlaceID PlaceID `json:"place_id"`
 	Color     any     `json:"color"`
+}
+
+type EnabledTransition struct {
+	Transition
+	Tokens []Token
+}
+
+type Result struct {
+	FireID   FireID
+	Consumed []Token
+	Produced []Token
 }
