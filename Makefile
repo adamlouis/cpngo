@@ -1,18 +1,15 @@
 
-all: lint test build
+all: ci
 
-lint: FORCE
+ci: lint test build
+
+lint:
 	golangci-lint run
 
-test: FORCE
+test:
 	go test -count=20 ./...
 
-build: build-go build-web
-
-build-go: FORCE
+build:
 	go build -o build/cpngo cmd/main.go
 
-serve: FORCE
-	MODE=dev go run cmd/cli/main.go serve
-
-.PHONY: FORCE
+.PHONY: build
