@@ -10,7 +10,7 @@ import (
 )
 
 // Runner is a petri net runnner.
-// It is an in-memory structure that implements petrinet behaviors.
+// It is an in-memory structure that implements Petri Net behaviors.
 type Runner struct {
 	placesByID      map[PlaceID]*place
 	transitionsByID map[TransitionID]*transition
@@ -25,25 +25,48 @@ type runner interface {
 	Net() Net
 
 	// Places returns a list of Places in the net.
-	// This value should never change since Net topology may not change.
+	// The return value should never change since Net topology may never change.
 	Places() []Place
 
+	// Transitions returns a list of Transitions in the net.
+	// The return value should never change since Net topology may never change.
 	Transitions() []Transition
 
+	// IntputArcs returns a list of input arcs in the net.
+	// The return value should never change since Net topology may never change.
 	InputArcs() []InputArc
 
+	// OutputArcs returns a list of output arcs in the net.
+	// The return value should never change since Net topology may never change.
 	OutputArcs() []OutputArc
 
+	// Tokens returns a list of Tokens in the net - the "marking".
+	// The return value may change any time any Fire-related function is called.
 	Tokens() []Token
 
+	// Enabled returns a list of enabled transitions.
+	// The enabled transitions includes the transition ID with all combinations of valid tokens.
 	Enabled() []EnabledTransition
 
+	// Fire executes the provided transtion immediately.
+	// Tokens are immediately consumed & produced.
 	Fire(fire EnabledTransition) (*Result, error)
-	FireAny() (*Result, error)
 
+	// FireAsync *starts* the firing process for the provided transition.
+	// It consumes, but does not produce tokens.
+	// FireAsync must be paired with FireResolve or FireReject to complete the transaction.
+	// Result contains a FireID which servers as an ID for the Fire transaction.
 	FireAsync(fire EnabledTransition) (*Result, error)
+
+	// FireResolve completes the asynchronous transaction by producing tokens on the output places.
 	FireResolve(id FireID) (*Result, error)
+
+	// FireReject fails the pending transaction. No tokens are produced on the output places.
 	FireReject(id FireID) (*Result, error)
+
+	// Pending returns a list of pending calls to FireAsync.
+	// It represents the FireAsync transactions that have not yet been resolved or rejected.
+	Pending() []Result
 }
 
 // verify that Runner implements the private runner interface
