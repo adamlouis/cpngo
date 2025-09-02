@@ -40,4 +40,7 @@ func TestCartesianProduct(t *testing.T) {
 
 	require.Equal(t, expected, actual)
 
+	require.Equal(t, [][]string{}, CartestianProduct([][]string{}))
+
+	require.Equal(t, [][]string{}, CartestianProduct([][]string{{"A"}, {}}))
 }

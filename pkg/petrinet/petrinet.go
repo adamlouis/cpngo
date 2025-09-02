@@ -1,6 +1,10 @@
 package petrinet
 
-import "fmt"
+import (
+	"fmt"
+	"maps"
+	"strings"
+)
 
 // Net is a petrinet - a collection of Places, Transitions, Arcs, and Tokens.
 type Net struct {
@@ -58,8 +62,27 @@ type EnabledTransition struct {
 	TokenAssignments map[InputArc]Token
 }
 
+func (et EnabledTransition) String() string {
+	lines := []string{}
+
+	lines = append(lines, fmt.Sprintf("TransitionID: %s", et.ID))
+
+	for _, tk := range et.TokenAssignments {
+		lines = append(lines, fmt.Sprintf("\t - %s", tk.ID))
+	}
+
+	lines = append(lines, "")
+
+	return strings.Join(lines, "\n")
+}
+
+func (et EnabledTransition) Equal(other EnabledTransition) bool {
+	return et.Transition == other.Transition && maps.Equal(et.TokenAssignments, other.TokenAssignments)
+}
+
 type Result struct {
-	FireID   FireID
-	Consumed []Token
-	Produced []Token
+	FireID       FireID
+	TransitionID TransitionID
+	Consumed     []Token
+	Produced     []Token
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/antonmedv/expr"
 	"github.com/antonmedv/expr/vm"
+	"github.com/google/uuid"
 )
 
 // Runner is a petri net runnner.
@@ -81,6 +82,7 @@ func NewRunner(n *Net) (*Runner, error) {
 		inputArcs:       []*inputArc{},
 		outputArcs:      []*outputArc{},
 		tokensByID:      map[TokenID]*token{},
+		pending:         map[FireID]Result{},
 	}
 
 	for _, p := range n.Places {
@@ -146,6 +148,10 @@ type token struct {
 	Token
 
 	place *place
+}
+
+func (t *token) String() string {
+	return string(t.ID)
 }
 
 func (r *Runner) Places() []Place {
@@ -224,93 +230,119 @@ func (r *Runner) Enabled() []EnabledTransition {
 	return ret
 }
 
-func (r *Runner) FireAsync(fire EnabledTransition) (*Result, error) {
-	return nil, fmt.Errorf("unimplemented")
+func (r *Runner) FireAsync(enabled EnabledTransition) (*Result, error) {
+
+	t, ok := r.transitionsByID[enabled.ID]
+	if !ok {
+		return nil, fmt.Errorf("transition %q does not exist", enabled.ID)
+	}
+
+	// TODO: enabled check must validate all input arcs to have valid token assignment with valid place!
+	if err := r.validTransition(enabled); err != nil {
+		return nil, fmt.Errorf("transition %q is not enabled: %w", t.ID, err)
+	}
+
+	ret := &Result{
+		FireID:       newFireID(),
+		TransitionID: enabled.ID,
+		Consumed:     nil,
+		Produced:     nil,
+	}
+
+	consumeTokens := []*token{}
+	for _, token := range enabled.TokenAssignments {
+		t, ok := r.tokensByID[token.ID]
+		if !ok {
+			return nil, fmt.Errorf("invalid token ID %q", t.ID)
+		}
+		consumeTokens = append(consumeTokens, t)
+	}
+
+	for _, tk := range consumeTokens {
+		ret.Consumed = append(ret.Consumed, tk.Token)
+		if err := r.consumeToken(tk.ID); err != nil {
+			panic("consume token failed after validation, net is corrupted")
+		}
+	}
+
+	r.pending[ret.FireID] = *ret
+
+	return ret, nil
 }
 
 func (r *Runner) FireResolve(id FireID) (*Result, error) {
-	return nil, fmt.Errorf("unimplemented")
+	ret, ok := r.pending[id]
+	if !ok {
+		return nil, fmt.Errorf("no pending fire %q", ret.FireID)
+	}
+
+	t, ok := r.transitionsByID[ret.TransitionID]
+	if !ok {
+		return nil, fmt.Errorf("invalid transtion")
+	}
+
+	consumedColors := []any{}
+	for _, tk := range ret.Consumed {
+		consumedColors = append(consumedColors, tk.Color)
+	}
+
+	for _, p := range t.outputPlaces {
+		for _, oa := range p.outputArcs {
+			if oa.FromTransitionID != t.ID {
+				continue
+			}
+
+			color, err := nextColor(consumedColors, oa)
+			if err != nil {
+				return nil, fmt.Errorf("transition %q failed to produce token when getting next color: %w", t.ID, err)
+			}
+
+			tk := &token{
+				Token: Token{
+					ID:        newTokenID(),
+					OnPlaceID: p.ID,
+					Color:     color,
+				},
+				place: p,
+			}
+
+			p.tokensByID[tk.ID] = tk
+			r.tokensByID[tk.ID] = tk
+		}
+	}
+
+	return &ret, nil
 }
 
 func (r *Runner) FireReject(id FireID) (*Result, error) {
-	return nil, fmt.Errorf("unimplemented")
+	ret, ok := r.pending[id]
+	if !ok {
+		return nil, fmt.Errorf("no pending fire %q", ret.FireID)
+	}
+
+	if _, ok := r.transitionsByID[ret.TransitionID]; !ok {
+		return nil, fmt.Errorf("invalid transtion")
+	}
+
+	return &ret, nil
 }
 
-func (r *Runner) Fire(id EnabledTransition) (*Result, error) {
+func newFireID() FireID {
+	return FireID(TokenID(uuid.New().String()))
+}
 
-	// // TODO(adamlouis): implement execution polices
-	// // TODO(adamlouis): implement guards
+func newTokenID() TokenID {
+	return TokenID(TokenID(uuid.New().String()))
+}
 
-	// t, ok := r.transitionsByID[id]
-	// if !ok {
-	// 	return fmt.Errorf("transition %q does not exist", id)
-	// }
+// TODO: Expose Fire and FireWithAssignments as separate functions
 
-	// enabled, err := r.isTransitionEnabled(id)
-	// if err != nil {
-	// 	return err
-	// }
-	// if !enabled {
-	// 	return fmt.Errorf("transition %q is not enabled", id)
-	// }
-
-	// // TODO(adamlouis): no tokens may be enabled if arc expression is non-deterministic (e.g. rand())
-	// consumeTokens := []*token{}
-	// for _, p := range t.inputPlaces {
-	// 	inputArc, err := r.getInputArc(p.ID, t.ID)
-	// 	if err != nil {
-	// 		return fmt.Errorf("transition %q failed to consume token: %w", id, err)
-	// 	}
-	// 	foundToken := false
-	// 	for _, tk := range p.tokensByID {
-	// 		ok, err := r.tokenSatisifesInputArcExpr(tk, inputArc)
-	// 		if err != nil {
-	// 			return fmt.Errorf("transition %q failed to consume token: %w", id, err)
-	// 		}
-	// 		if ok {
-	// 			consumeTokens = append(consumeTokens, tk)
-	// 			foundToken = true
-	// 			break
-	// 		}
-	// 	}
-	// 	if !foundToken {
-	// 		return fmt.Errorf("transition %q failed to consume token", id)
-	// 	}
-	// }
-
-	// consumedColors := []any{}
-	// for _, tk := range consumeTokens {
-	// 	if err := r.consumeToken(tk.ID); err != nil {
-	// 		// TODO(adamlouis): if any fails, the net is corrupted & we should roll back
-	// 		return fmt.Errorf("transition %q failed to consume token: %w", tk.ID, err)
-	// 	}
-	// 	consumedColors = append(consumedColors, tk.Color)
-	// }
-
-	// for _, p := range t.outputPlaces {
-	// 	oa, err := r.getOutputArc(t.ID, p.ID)
-	// 	if err != nil {
-	// 		return fmt.Errorf("transition %q failed to produce token: %w", id, err)
-	// 	}
-	// 	color, err := nextColor(consumedColors, oa)
-	// 	if err != nil {
-	// 		return fmt.Errorf("transition %q failed to produce token when getting next color: %w", id, err)
-	// 	}
-	// 	tk := &token{
-	// 		Token: Token{
-	// 			ID:        TokenID(uuid.New().String()),
-	// 			OnPlaceID: p.ID,
-	// 			Color:     color,
-	// 		},
-	// 		place: p,
-	// 	}
-	// 	p.tokensByID[tk.ID] = tk
-	// 	r.tokensByID[tk.ID] = tk
-	// }
-
-	// return nil
-
-	return nil, fmt.Errorf("unimplemented")
+func (r *Runner) Fire(enabled EnabledTransition) (*Result, error) {
+	res, err := r.FireAsync(enabled)
+	if err != nil {
+		return nil, err
+	}
+	return r.FireResolve(res.FireID)
 }
 
 func (r *Runner) FireAny() (*Result, error) {
@@ -324,39 +356,6 @@ func (r *Runner) FireAny() (*Result, error) {
 	return r.Fire(ts[0])
 }
 
-// func (r *Runner) listInputArcs(fromPlaceID PlaceID, toTransitionID TransitionID) ([]*inputArc, error) {
-// 	ret = []*inputArc{}
-// 	for _, a := range r.inputArcs {
-// 		if a.FromPlaceID == fromPlaceID && a.ToTransitionID == toTransitionID {
-// 			ret = append(ret, a)
-// 		}
-// 	}
-// 	if len(ret) == 0 {
-// 		return nil, fmt.Errorf("input arc from %q to %q does not exist", fromPlaceID, toTransitionID)
-// 	}
-// 	return ret, nil
-// }
-
-// func (r *Runner) listOutputArcs(fromTransitionID TransitionID, toPlaceID PlaceID) ([]*outputArc, error) {
-// 	ret = []*outputArc{}
-// 	for _, a := range r.outputArcs {
-// 		if a.FromTransitionID == fromTransitionID && a.ToPlaceID == toPlaceID {
-// 			ret = append(ret, a)
-// 		}
-// 	}
-// 	if len(ret) == 0 {
-// 		return nil, fmt.Errorf("output arc from %q to %q does not exist", fromTransitionID, toPlaceID)
-// 	}
-// 	return ret, nil
-// }
-
-type inputArcOptions struct {
-	fromPlace *place
-	inputArc  *inputArc
-
-	validTokens []*token
-}
-
 // listEnabled returns the enabled transitions for the transition ID including the cartesian product of tokens
 func (r *Runner) listEnabled(id TransitionID) ([]EnabledTransition, error) {
 	t, ok := r.transitionsByID[id]
@@ -368,11 +367,13 @@ func (r *Runner) listEnabled(id TransitionID) ([]EnabledTransition, error) {
 		return nil, fmt.Errorf("unreachable: corrupted net: transition has no input places")
 	}
 
-	opts := []inputArcOptions{}
+	inputArcs := []*inputArc{}
+	tokensForInputArcs := [][]*token{}
+
 	for _, place := range t.inputPlaces {
 		for _, arc := range place.inputArcs {
 
-			validTokens := []*token{}
+			tokensForArc := []*token{}
 
 			for _, tk := range place.tokensByID {
 				ok, err := r.tokenSatisifesInputArcExpr(tk, arc)
@@ -380,61 +381,55 @@ func (r *Runner) listEnabled(id TransitionID) ([]EnabledTransition, error) {
 					return nil, err
 				}
 				if ok {
-					validTokens = append(validTokens, tk)
+					tokensForArc = append(tokensForArc, tk)
 				}
 			}
 
-			if len(validTokens) == 0 {
+			if len(tokensForArc) == 0 {
 				return []EnabledTransition{}, nil
 			}
 
-			opts = append(opts, inputArcOptions{
-				fromPlace: place,
-				inputArc:  arc,
-
-				validTokens: validTokens,
-			})
+			inputArcs = append(inputArcs, arc)
+			tokensForInputArcs = append(tokensForInputArcs, tokensForArc)
 		}
 	}
 
-	// TODO: create []EnabledTransition for non-duplicate cartesian product of opts
+	combinations := CartestianProduct(tokensForInputArcs)
 
-	return nil, fmt.Errorf("unimplemented")
+	ret := []EnabledTransition{}
+
+	for _, combo := range combinations {
+		assignments := map[InputArc]Token{}
+
+		for j, t := range combo {
+			assignments[inputArcs[j].InputArc] = t.Token
+		}
+
+		ret = append(ret, EnabledTransition{
+			Transition:       t.Transition,
+			TokenAssignments: assignments,
+		})
+	}
+
+	sort.Slice(ret, func(i, j int) bool {
+		return ret[i].String() < ret[j].String()
+	})
+
+	return ret, nil
 }
 
-// func (r *Runner) isTransitionEnabled(id TransitionID) (bool, error) {
-// 	t, ok := r.transitionsByID[id]
-// 	if !ok {
-// 		return false, fmt.Errorf("transition %q does not exist", id)
-// 	}
-
-// 	if len(t.inputPlaces) == 0 {
-// 		panic("unreachable: corrupted net: transition has no input places")
-// 	}
-
-// 	for _, p := range t.inputPlaces {
-// 		arc, err := r.getInputArc(p.ID, t.ID)
-// 		if err != nil {
-// 			return false, err
-// 		}
-
-// 		anyOk := false
-// 		for _, tk := range p.tokensByID {
-// 			ok, err := r.tokenSatisifesInputArcExpr(tk, arc)
-// 			if err != nil {
-// 				return false, err
-// 			}
-// 			if ok {
-// 				anyOk = true
-// 				break
-// 			}
-// 		}
-// 		if !anyOk {
-// 			return false, nil
-// 		}
-// 	}
-// 	return true, nil
-// }
+func (r *Runner) validTransition(enabled EnabledTransition) error {
+	all, err := r.listEnabled(enabled.ID)
+	if err != nil {
+		return err
+	}
+	for _, v := range all {
+		if enabled.Equal(v) {
+			return nil
+		}
+	}
+	return fmt.Errorf("not a valid transition")
+}
 
 func compileExpr(code string) (*vm.Program, error) {
 	rand := expr.Function("rand", func(params ...any) (any, error) {
@@ -477,6 +472,7 @@ func nextColor(colors []any, a *outputArc) (any, error) {
 		return nil, fmt.Errorf("failed to compile expression %q: %w", a.Expr, err)
 	}
 
+	// TODO: this key should not be here
 	v, err := expr.Run(prog, map[string]any{
 		"colors": colors,
 	})
@@ -530,6 +526,8 @@ func (r *Runner) connectPointers() error {
 		arc.from = place
 		arc.to = transition
 		transition.inputPlaces = append(transition.inputPlaces, place)
+
+		place.inputArcs = append(place.inputArcs, arc)
 	}
 
 	// add place & transition pointers derived from output arcs
@@ -547,9 +545,9 @@ func (r *Runner) connectPointers() error {
 		arc.from = transition
 		arc.to = place
 		transition.outputPlaces = append(transition.outputPlaces, place)
-	}
 
-	// TODO: populate place.inputArcs & place.outputArcs
+		place.outputArcs = append(place.outputArcs, arc)
+	}
 
 	return nil
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCPNEmpty(t *testing.T) {
+func TestNetEmpty(t *testing.T) {
 	rnr, err := petrinet.NewRunner(&petrinet.Net{
 		[]petrinet.Place{},
 		[]petrinet.Transition{},
@@ -23,7 +23,7 @@ func TestCPNEmpty(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestExampleCPN(t *testing.T) {
+func TestNet5(t *testing.T) {
 	rnr, err := petrinet.NewRunner(&petrinet.Net{
 		[]petrinet.Place{
 			{ID: "p1"},
@@ -64,19 +64,21 @@ func TestExampleCPN(t *testing.T) {
 
 	_, err = rnr.FireAny()
 	require.NoError(t, err)
+
 	require.Len(t, rnr.Enabled(), 2, "expected 2 enabled transitions")
 	tks = rnr.Tokens()
 	require.Len(t, tks, 2, "expected 2 tokens")
 
 	_, err = rnr.FireAny()
 	require.NoError(t, err)
+
 	require.Len(t, rnr.Enabled(), 2, "expected 2 enabled transitions")
 	tks = rnr.Tokens()
 	require.Len(t, tks, 2, "expected 2 tokens")
 
 	_, err = rnr.FireAny()
 	require.NoError(t, err)
-	require.Len(t, rnr.Enabled(), 1, "expected 1 enabled transition")
+	require.Len(t, rnr.Enabled(), 2, "expected 2 enabled transition")
 	tks = rnr.Tokens()
 	require.Len(t, tks, 2, "expected 2 tokens")
 
