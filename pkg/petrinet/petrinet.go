@@ -1,7 +1,12 @@
 package petrinet
 
-import "fmt"
+import (
+	"fmt"
+	"maps"
+	"strings"
+)
 
+// Net is a petrinet - a collection of Places, Transitions, Arcs, and Tokens.
 type Net struct {
 	Places      []Place      `json:"places"`
 	Transitions []Transition `json:"transitions"`
@@ -11,8 +16,12 @@ type Net struct {
 }
 
 type PlaceID string
+
 type TransitionID string
+
 type TokenID string
+
+type FireID string
 
 type Place struct {
 	ID PlaceID `json:"id"`
@@ -46,4 +55,34 @@ type Token struct {
 	ID        TokenID `json:"id"`
 	OnPlaceID PlaceID `json:"place_id"`
 	Color     any     `json:"color"`
+}
+
+type EnabledTransition struct {
+	Transition
+	TokenAssignments map[InputArc]Token
+}
+
+func (et EnabledTransition) String() string {
+	lines := []string{}
+
+	lines = append(lines, fmt.Sprintf("TransitionID: %s", et.ID))
+
+	for _, tk := range et.TokenAssignments {
+		lines = append(lines, fmt.Sprintf("\t - %s", tk.ID))
+	}
+
+	lines = append(lines, "")
+
+	return strings.Join(lines, "\n")
+}
+
+func (et EnabledTransition) Equal(other EnabledTransition) bool {
+	return et.Transition == other.Transition && maps.Equal(et.TokenAssignments, other.TokenAssignments)
+}
+
+type Result struct {
+	FireID       FireID
+	TransitionID TransitionID
+	Consumed     []Token
+	Produced     []Token
 }

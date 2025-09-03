@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCPNEmpty(t *testing.T) {
+func TestNetEmpty(t *testing.T) {
 	rnr, err := petrinet.NewRunner(&petrinet.Net{
 		[]petrinet.Place{},
 		[]petrinet.Transition{},
@@ -19,10 +19,11 @@ func TestCPNEmpty(t *testing.T) {
 	require.NoError(t, err)
 	ts := rnr.Enabled()
 	require.Len(t, ts, 0)
-	require.Error(t, rnr.FireAny())
+	_, err = rnr.FireAny()
+	require.Error(t, err)
 }
 
-func TestExampleCPN(t *testing.T) {
+func TestNet5(t *testing.T) {
 	rnr, err := petrinet.NewRunner(&petrinet.Net{
 		[]petrinet.Place{
 			{ID: "p1"},
@@ -61,27 +62,34 @@ func TestExampleCPN(t *testing.T) {
 	require.Len(t, tks, 1, "expected 1 tokens")
 	require.Equal(t, tks[0].OnPlaceID, petrinet.PlaceID("p1"))
 
-	require.NoError(t, rnr.FireAny())
+	_, err = rnr.FireAny()
+	require.NoError(t, err)
+
 	require.Len(t, rnr.Enabled(), 2, "expected 2 enabled transitions")
 	tks = rnr.Tokens()
 	require.Len(t, tks, 2, "expected 2 tokens")
 
-	require.NoError(t, rnr.FireAny())
+	_, err = rnr.FireAny()
+	require.NoError(t, err)
+
 	require.Len(t, rnr.Enabled(), 2, "expected 2 enabled transitions")
 	tks = rnr.Tokens()
 	require.Len(t, tks, 2, "expected 2 tokens")
 
-	require.NoError(t, rnr.FireAny())
-	require.Len(t, rnr.Enabled(), 1, "expected 1 enabled transition")
+	_, err = rnr.FireAny()
+	require.NoError(t, err)
+	require.Len(t, rnr.Enabled(), 2, "expected 2 enabled transition")
 	tks = rnr.Tokens()
 	require.Len(t, tks, 2, "expected 2 tokens")
 
-	require.NoError(t, rnr.FireAny())
+	_, err = rnr.FireAny()
+	require.NoError(t, err)
 	require.Len(t, rnr.Enabled(), 1, "expected 1 enabled transition")
 	tks = rnr.Tokens()
 	require.Len(t, tks, 2, "expected 2 token")
 
-	require.NoError(t, rnr.FireAny())
+	_, err = rnr.FireAny()
+	require.NoError(t, err)
 	require.Len(t, rnr.Enabled(), 0, "expected 0 enabled transitions")
 	tokens := rnr.Tokens()
 
@@ -121,12 +129,14 @@ func TestExpr(t *testing.T) {
 	tks := rnr.Tokens()
 	require.Len(t, tks, 2, "expected 2 tokens")
 
-	require.NoError(t, rnr.FireAny())
+	_, err = rnr.FireAny()
+	require.NoError(t, err)
 	require.Len(t, rnr.Enabled(), 1, "expected 1 enabled transitions")
 	tks = rnr.Tokens()
 	require.Len(t, tks, 2, "expected 2 tokens")
 
-	require.NoError(t, rnr.FireAny())
+	_, err = rnr.FireAny()
+	require.NoError(t, err)
 	require.Len(t, rnr.Enabled(), 0, "expected 0 enabled transitions")
 	tks = rnr.Tokens()
 	require.Len(t, tks, 2, "expected 2 tokens")
